@@ -1,16 +1,12 @@
 {
-  "name": "@dashkite/module",
+  "name": "@dashkite/amen-console",
   "version": "0.0.0",
-  "description": "",
+  "description": "Print Amen test output to the console",
   "main": "build/node/src/index.js",
   "exports": {
     ".": {
       "import": "./build/import/src/index.js",
       "node": "./build/node/src/index.js"
-    },
-    "./*": {
-      "import": "./build/import/src/*.js",
-      "node": "./build/node/src/*.js"
     }
   },
   "files": [
@@ -25,17 +21,17 @@
     "url": "git+https://github.com/dashkite/module.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Dan Yoder",
   "license": "SEE LICENSE IN LICENSE.md",
   "bugs": {
     "url": "https://github.com/dashkite/module/issues"
   },
   "homepage": "https://github.com/dashkite/module#readme",
   "devDependencies": {
-    "@dashkite/genie": "^0.3.3",
-    "@dashkite/genie-presets": "^0.1.1",
-    "@dashkite/joy": "^0.3.0",
-    "amen": "^3.0.0",
+    "@dashkite/amen": "^0.1.0",
+    "@dashkite/genie": "^0.4.0",
+    "@dashkite/genie-presets": "^0.1.12",
+    "@dashkite/joy": "^0.3.5",
     "coffeescript": "^2.5.1"
   }
 }

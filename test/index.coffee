@@ -1,13 +1,17 @@
 import assert from "assert"
-import {print, test, success} from "amen"
+import {test, success} from "@dashkite/amen"
 
-import * as x from "../src"
+import print from "../src"
 
 do ->
 
-  print await test "", [
+  print await test "category", [
 
-    test "", ->
+    test "success", ->
+
+    test "failure", -> throw new Error "oops"
+
+    test "pending"
 
   ]
 
