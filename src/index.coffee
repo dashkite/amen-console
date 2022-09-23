@@ -1,6 +1,9 @@
 import chalk from "chalk"
 
-debug = "amen" in process.env.DEBUG.split /\s+/
+debug = do ->
+  if ( _debug = process.env.DEBUG?.split /\s+/ )?
+    _debug.includes "amen"
+  else false
 
 print = ([description, result], indent="") ->
   if Array.isArray result
