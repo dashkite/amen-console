@@ -21,7 +21,7 @@ print = ([description, result], indent="") ->
           chalk.red description
       else
         chalk.yellow description
-    if debug && result.stack?
+    if debug && result?.stack?
       console.error result.stack
       
 export default print
