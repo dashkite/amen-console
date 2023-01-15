@@ -28,13 +28,13 @@
   },
   "homepage": "https://github.com/dashkite/module#readme",
   "devDependencies": {
-    "@dashkite/amen": "^0.1.0",
-    "@dashkite/genie": "^0.4.0",
-    "@dashkite/genie-presets": "^0.1.12",
-    "@dashkite/joy": "^0.3.5",
-    "coffeescript": "^2.5.1"
+    "@dashkite/amen": "^0.2.0",
+    "@dashkite/genie": "^0.5.11",
+    "@dashkite/genie-presets": "^0.6.0",
+    "@dashkite/joy": "^0.3.16",
+    "coffeescript": "^2.7.0"
   },
   "dependencies": {
-    "chalk": "^4.1.1"
+    "chalk": "^5.2.0"
   }
 }
