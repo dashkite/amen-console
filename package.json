@@ -35,6 +35,6 @@
     "coffeescript": "^2.7.0"
   },
   "dependencies": {
-    "chalk": "^5.2.0"
+    "chalk": "^4.1.2"
   }
 }
