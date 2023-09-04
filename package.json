@@ -30,8 +30,8 @@
   "homepage": "https://github.com/dashkite/module#readme",
   "devDependencies": {
     "@dashkite/amen": "^0.2.0",
-    "@dashkite/genie": "^0.5.11",
-    "@dashkite/genie-presets": "^0.7.0",
+    "@dashkite/genie": "link:../genie",
+    "@dashkite/genie-presets": "link:../genie-presets",
     "@dashkite/joy": "^0.3.16",
     "chalk": "^4.1.2",
     "coffeescript": "^2.7.0"
