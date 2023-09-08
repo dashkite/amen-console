@@ -5,12 +5,10 @@
   "main": "build/node/src/index.js",
   "exports": {
     ".": {
-      "import": "./build/import/src/index.js",
       "node": "./build/node/src/index.js"
     }
   },
   "files": [
-    "build/import/src",
     "build/node/src"
   ],
   "scripts": {
@@ -31,8 +29,8 @@
   "devDependencies": {
     "@dashkite/amen": "^0.2.0",
     "@dashkite/genie": "link:../genie",
+    "@dashkite/genie-coffee": "link:../genie-coffee",
     "@dashkite/joy": "^0.3.16",
-    "chalk": "^4.1.2",
-    "coffeescript": "^2.7.0"
+    "chalk": "^4.1.2"
   }
 }

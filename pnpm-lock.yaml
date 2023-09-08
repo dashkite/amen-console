@@ -7,24 +7,24 @@ settings:
 devDependencies:
   '@dashkite/amen':
     specifier: ^0.2.0
-    version: 0.2.0
+    version: 0.2.2
   '@dashkite/genie':
     specifier: link:../genie
     version: link:../genie
+  '@dashkite/genie-coffee':
+    specifier: link:../genie-coffee
+    version: link:../genie-coffee
   '@dashkite/joy':
     specifier: ^0.3.16
     version: 0.3.16
   chalk:
     specifier: ^4.1.2
     version: 4.1.2
-  coffeescript:
-    specifier: ^2.7.0
-    version: 2.7.0
 
 packages:
 
-  /@dashkite/amen@0.2.0:
-    resolution: {integrity: sha512-64cI0qvcLXFhfuvNGI/ebUgbs7Rx+45K1EjqsdLVYjEALeAPGqViujiSWVky9KHw1F93FVpJx1/B6mlZJLf2Tg==}
+  /@dashkite/amen@0.2.2:
+    resolution: {integrity: sha512-bJBbRiIcQaKBT2A+EOltZaZMqGCptPw7rfSnTsu1AiicYWrXwe41zwo2W0a079OpJTLsH9v2vnU20xMCP9mQqA==}
     dev: true
 
   /@dashkite/joy@0.3.16:
@@ -44,12 +44,6 @@ packages:
     dependencies:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
-    dev: true
-
-  /coffeescript@2.7.0:
-    resolution: {integrity: sha512-hzWp6TUE2d/jCcN67LrW1eh5b/rSDKQK6oD6VMLlggYVUUFexgTH9z3dNYihzX4RMhze5FTUsUmOXViJKFQR/A==}
-    engines: {node: '>=6'}
-    hasBin: true
     dev: true
 
   /color-convert@2.0.1:
