@@ -13,7 +13,8 @@ print = ([description, result], indent="") ->
         else if result.message? and result.message != ""
           chalk.red "#{description} (#{result.message})"
         else
-          chalk.red description
+          chalk.red "#{description} 
+            (no message available - possible non-error)"
       else
         chalk.yellow description
 
