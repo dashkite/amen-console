@@ -1,5 +1,7 @@
 import chalk from "chalk"
 
+debug = ( process.env.debug? || process.env.DEBUG? )
+
 print = ([description, result], indent="") ->
   if Array.isArray result
     console.error indent, chalk.blue description
@@ -12,6 +14,8 @@ print = ([description, result], indent="") ->
           chalk.green description
         else if result.message? and result.message != ""
           chalk.red "#{description} (#{result.message})"
+          if result.stack? && debug
+            chalk.red result.stack
         else
           chalk.red "#{description} 
             (no message available - possible non-error)"
