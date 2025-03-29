@@ -13,9 +13,10 @@ print = ([description, result], indent="") ->
         if result == true
           chalk.green description
         else if result.message? and result.message != ""
-          chalk.red "#{description} (#{result.message})"
           if result.stack? && debug
-            chalk.red result.stack
+            chalk.red "#{description} (#{result.message})\n#{result.stack}"
+          else 
+            chalk.red "#{description} (#{result.message})"
         else
           chalk.red "#{description} 
             (no message available - possible non-error)"
