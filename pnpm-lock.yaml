@@ -23,9 +23,6 @@ importers:
       '@dashkite/joy':
         specifier: ^0.3.16
         version: 0.3.16
-      '@dashkite/vista':
-        specifier: link:../vista
-        version: link:../vista
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
