@@ -13,7 +13,8 @@
   ],
   "scripts": {
     "test": "genie test",
-    "build": "genie build"
+    "build": "genie build",
+    "release": "genie release"
   },
   "repository": {
     "type": "git",
@@ -31,6 +32,7 @@
     "@dashkite/genie": "^0.8.4",
     "@dashkite/genie-clean": "link:../genie-clean",
     "@dashkite/genie-coffee": "link:../genie-coffee",
+    "@dashkite/genie-release": "^0.2.8",
     "@dashkite/joy": "^0.3.16",
     "chalk": "^4.1.2"
   }
