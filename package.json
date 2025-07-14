@@ -1,6 +1,6 @@
 {
   "name": "@dashkite/amen-console",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Print Amen test output to the console",
   "main": "build/node/src/index.js",
   "exports": {
