@@ -33,8 +33,8 @@
     "@dashkite/genie": "^0.20.19",
     "@dashkite/genie-clean": "^0.9.0",
     "@dashkite/genie-coffee": "^0.9.0",
-    "@dashkite/genie-module": "^0.5.48",
-    "@dashkite/genie-release": "^0.5.6",
+    "@dashkite/genie-module": "^0.5.49",
+    "@dashkite/genie-release": "^0.5.7",
     "@dashkite/joy": "^0.7.0",
     "chalk": "^4.1.2"
   }
