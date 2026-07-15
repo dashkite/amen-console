@@ -1,11 +1,9 @@
-import assert from "assert"
-import {test, success} from "@dashkite/amen"
+import { test } from "@dashkite/amen"
 
 import print from "../src"
 
 do ->
-
-  print await test "category", [
+  await print test "category", [
 
     test "success", ->
 
@@ -14,5 +12,3 @@ do ->
     test "pending"
 
   ]
-
-  process.exit if success then 0 else 1
