@@ -24,7 +24,7 @@ printSummary = ( stats ) ->
   console.error bold "Test Summary:"
   console.error "  Tests:    " + green( "#{stats.passed} passed" ) + ", " +
                 ( if stats.failed > 0 then red( "#{stats.failed} failed" ) else "0 failed" ) + ", " +
-                yellow( "#{stats.skipped} skipped" ) + " (#{stats.total} total)"
+                yellow( "#{stats.skipped} pending/skipped" ) + " (#{stats.total} total)"
   console.error "  Duration: #{duration}s"
 
 streamEvents = ( iterator ) ->
@@ -41,9 +41,9 @@ streamEvents = ( iterator ) ->
         stats.failed++
         console.error indent + red( "✘ " + event.test.description )
         console.error indent + "  " + gray( event.error.stack ? event.error.message )
-      when "test:skipped"
+      when "test:skipped", "test:pending"
         stats.skipped++
-        console.error indent + yellow( "➖ " + event.test.description + " (skipped)" )
+        console.error indent + yellow( "➖ " + event.test.description + " (pending)" )
       when "group:start"
         console.error indent + cyan( event.test.description )
 
@@ -77,9 +77,9 @@ renderBlessedTUI = ( iterator ) ->
           stackLines = ( event.error?.stack ? "" ).split "\n"
           for line in stackLines
             treeView.log indent + "  {red-fg}#{line}{/red-fg}"
-        when "test:skipped"
+        when "test:skipped", "test:pending"
           stats.skipped++
-          treeView.log indent + "{yellow-fg}➖ " + event.test.description + " (skipped){/yellow-fg}"
+          treeView.log indent + "{yellow-fg}➖ " + event.test.description + " (pending){/yellow-fg}"
         when "group:start"
           treeView.log indent + "{cyan-fg}📂 " + event.test.description + "{/cyan-fg}"
       
@@ -88,6 +88,7 @@ renderBlessedTUI = ( iterator ) ->
       screen.render()
   finally
     screen.destroy()
+    process.stdin.pause()
 
   printSummary stats
 
