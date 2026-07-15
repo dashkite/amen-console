@@ -14,7 +14,8 @@ getIndent = ( test ) ->
   indent = ""
   parent = test.parent
   while parent?
-    indent += "  "
+    if parent.description?
+      indent += "  "
     parent = parent.parent
   indent
 
@@ -26,6 +27,8 @@ printSummary = ( stats ) ->
                 ( if stats.failed > 0 then red( "#{stats.failed} failed" ) else "0 failed" ) + ", " +
                 yellow( "#{stats.skipped} pending/skipped" ) + " (#{stats.total} total)"
   console.error "  Duration: #{duration}s"
+  if stats.failed > 0 && process?
+    process.exitCode = 1
 
 streamEvents = ( iterator ) ->
   stats = { passed: 0, failed: 0, skipped: 0, total: 0, startTime: Date.now() }
@@ -41,11 +44,15 @@ streamEvents = ( iterator ) ->
         stats.failed++
         console.error indent + red( "✘ " + event.test.description )
         console.error indent + "  " + gray( event.error.stack ? event.error.message )
-      when "test:skipped", "test:pending"
+      when "test:skipped"
+        stats.skipped++
+        console.error indent + yellow( "➖ " + event.test.description + " (skipped)" )
+      when "test:pending"
         stats.skipped++
         console.error indent + yellow( "➖ " + event.test.description + " (pending)" )
       when "group:start"
-        console.error indent + cyan( event.test.description )
+        if event.test.description?
+          console.error indent + cyan( event.test.description )
 
   printSummary stats
 
@@ -77,11 +84,15 @@ renderBlessedTUI = ( iterator ) ->
           stackLines = ( event.error?.stack ? "" ).split "\n"
           for line in stackLines
             treeView.log indent + "  {red-fg}#{line}{/red-fg}"
-        when "test:skipped", "test:pending"
+        when "test:skipped"
+          stats.skipped++
+          treeView.log indent + "{yellow-fg}➖ " + event.test.description + " (skipped){/yellow-fg}"
+        when "test:pending"
           stats.skipped++
           treeView.log indent + "{yellow-fg}➖ " + event.test.description + " (pending){/yellow-fg}"
         when "group:start"
-          treeView.log indent + "{cyan-fg}📂 " + event.test.description + "{/cyan-fg}"
+          if event.test.description?
+            treeView.log indent + "{cyan-fg}📂 " + event.test.description + "{/cyan-fg}"
       
       if stats.total > 0
         progressBar.setProgress ( ( stats.passed + stats.skipped ) / stats.total ) * 100
@@ -102,13 +113,16 @@ printLegacyTree = ( [ description, result ], indent = "" ) ->
       if result?
         if result == true
           green "✔ #{description}"
-        else if ( result.message? ) && ( result.message != "" )
-          if ( result.stack? ) && debug
-            red "✘ #{description} (#{result.message})\n#{result.stack}"
-          else
-            red "✘ #{description} (#{result.message})"
         else
-          red "✘ #{description}"
+          if process?
+            process.exitCode = 1
+          if ( result.message? ) && ( result.message != "" )
+            if ( result.stack? ) && debug
+              red "✘ #{description} (#{result.message})\n#{result.stack}"
+            else
+              red "✘ #{description} (#{result.message})"
+          else
+            red "✘ #{description}"
       else
         yellow "➖ #{description}"
 
