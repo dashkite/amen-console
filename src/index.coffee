@@ -83,6 +83,7 @@ renderBlessedTUI = ( iterator, target ) ->
     width: "100%"
     bottom: 2
     keys: true
+    vi: true
     mouse: true
     parseAnsi: true
     scrollbar: ch: " "
@@ -205,6 +206,20 @@ renderBlessedTUI = ( iterator, target ) ->
   tree.key "right", ->
     tree.select ( tree.items.length - 1 )
     do screen.render
+
+  tree.key "o", ->
+    tree.emit "action", tree.items[ tree.selected ], tree.selected
+
+  zPressed = false
+
+  tree.on "keypress", ( ch, key ) ->
+    if zPressed
+      zPressed = false
+      if key?.name == "a"
+        tree.emit "action", tree.items[ tree.selected ], tree.selected
+    else
+      if key?.name == "z"
+        zPressed = true
 
   tree.on "action", ( item, index ) ->
     test = tests[ index ]
