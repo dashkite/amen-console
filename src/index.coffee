@@ -1,14 +1,7 @@
 import blessed from "neo-blessed"
+import { red, green, yellow, blue, cyan, gray, bold } from "colorette"
 
 debug = ( process.env.debug? ) || ( process.env.DEBUG? )
-
-red = ( text ) -> "\x1b[31m#{text}\x1b[0m"
-green = ( text ) -> "\x1b[32m#{text}\x1b[0m"
-yellow = ( text ) -> "\x1b[33m#{text}\x1b[0m"
-blue = ( text ) -> "\x1b[34m#{text}\x1b[0m"
-cyan = ( text ) -> "\x1b[36m#{text}\x1b[0m"
-gray = ( text ) -> "\x1b[90m#{text}\x1b[0m"
-bold = ( text ) -> "\x1b[1m#{text}\x1b[0m"
 
 getIndent = ( test ) ->
   indent = ""
@@ -19,57 +12,71 @@ getIndent = ( test ) ->
     parent = parent.parent
   indent
 
-printSummary = ( stats ) ->
-  duration = ( ( Date.now() - stats.startTime ) / 1000 ).toFixed 2
+printSummary = ( statistics ) ->
+  duration = ( ( Date.now() - statistics.startTime ) / 1000 ).toFixed 2
   console.error ""
   console.error bold "Test Summary:"
-  console.error "  Tests:    " + green( "#{stats.passed} passed" ) + ", " +
-                ( if stats.failed > 0 then red( "#{stats.failed} failed" ) else "0 failed" ) + ", " +
-                yellow( "#{stats.skipped} skipped" ) + ", " +
-                yellow( "#{stats.pending} pending" ) + " (#{stats.total} total)"
+  
+  passed = green "#{statistics.passed} passed"
+  failed =
+    if statistics.failed > 0
+      red "#{statistics.failed} failed"
+    else
+      "0 failed"
+  skipped = yellow "#{statistics.skipped} skipped"
+  pending = yellow "#{statistics.pending} pending"
+  
+  console.error "  Tests:    #{passed}, #{failed}, #{skipped}, " +
+    "#{pending} (#{statistics.total} total)"
   console.error "  Duration: #{duration}s"
-  if stats.failed > 0 && process?
+  if statistics.failed > 0 && process?
     process.exitCode = 1
 
-printTree = ( test, stats, indent = "" ) ->
+printTree = ( test, statistics, indent = "" ) ->
   if test.description?
     if test.children?
       console.error indent + cyan( test.description )
       for child in test.children
-        printTree child, stats, ( indent + "  " )
+        printTree child, statistics, ( indent + "  " )
     else
       status = test.status
       if status == "passed"
-        stats.passed++
+        statistics.passed++
         console.error indent + green( "✔ " + test.description )
       else if status == "failed"
-        stats.failed++
+        statistics.failed++
         console.error indent + red( "✘ " + test.description )
         console.error indent + "  " + gray( test.error?.stack ? test.error?.message ? "Unknown error" )
       else if status == "skipped"
-        stats.skipped++
+        statistics.skipped++
         console.error indent + yellow( "- " + test.description )
       else if status == "pending"
-        stats.pending++
+        statistics.pending++
         console.error indent + yellow( "? " + test.description )
   else
     if test.children?
       for child in test.children
-        printTree child, stats, indent
+        printTree child, statistics, indent
 
 streamEvents = ( iterator, target ) ->
-  stats = { passed: 0, failed: 0, skipped: 0, pending: 0, total: 0, startTime: Date.now() }
+  statistics =
+    passed: 0
+    failed: 0
+    skipped: 0
+    pending: 0
+    total: 0
+    startTime: Date.now()
   for await event from iterator
     if event.type == "test:start"
-      stats.total++
+      statistics.total++
 
-  printTree target, stats
-  printSummary stats
+  printTree target, statistics
+  printSummary statistics
 
 renderBlessedTUI = ( iterator, target ) ->
   screen = blessed.screen autoPadding: true
   
-  treeView = blessed.list
+  tree = blessed.list
     parent: screen
     top: 0
     left: 0
@@ -85,14 +92,14 @@ renderBlessedTUI = ( iterator, target ) ->
         bg: "cyan"
         fg: "black"
 
-  statusBar = blessed.box
+  status = blessed.box
     parent: screen
     bottom: 1
     height: 1
     tags: true
     content: "  Running tests..."
 
-  shortcutBar = blessed.box
+  shortcuts = blessed.box
     parent: screen
     bottom: 0
     height: 1
@@ -100,73 +107,82 @@ renderBlessedTUI = ( iterator, target ) ->
     style:
       bg: "cyan"
       fg: "black"
-    content: "  UP/DOWN/j/k: Navigate | ENTER: Toggle stack trace | ESC/q: Exit"
+    content:
+      "  UP/DOWN/j/k: Navigate | ENTER: Toggle stack trace | ESC/q: Exit"
   
-  stats = { passed: 0, failed: 0, skipped: 0, pending: 0, total: 0, startTime: Date.now() }
+  statistics =
+    passed: 0
+    failed: 0
+    skipped: 0
+    pending: 0
+    total: 0
+    startTime: Date.now()
 
-  exitResolver = null
-  exitPromise = new Promise ( resolve ) -> exitResolver = resolve
+  resolver = null
+  promise = new Promise ( resolve ) -> resolver = resolve
 
   exit = ->
-    screen.destroy()
-    process.stdin.pause()
-    printSummary stats
-    exitResolver()
+    do screen.destroy
+    do process.stdin.pause
+    printSummary statistics
+    do resolver
 
   screen.key [ "escape", "q", "C-c" ], exit
 
   updateStatus = ( finished = false ) ->
-    passed = stats.passed
-    failed = stats.failed
-    skipped = stats.skipped
-    pending = stats.pending
-    total = stats.total
+    passed = statistics.passed
+    failed = statistics.failed
+    skipped = statistics.skipped
+    pending = statistics.pending
+    total = statistics.total
     
     percent = 0
     if total > 0
-      percent = Math.round ( ( passed + failed + skipped + pending ) / total ) * 100
+      percent = Math.round( ( passed + failed + skipped + pending ) / total ) * 100
 
-    statusText = if finished then "Execution Finished" else "Running tests..."
-    statusBar.setContent "  #{statusText} | #{percent}% complete | ✔ #{passed} | ✘ #{failed} | - #{skipped} | ? #{pending} | total: #{total}"
+    text = if finished then "Execution Finished" else "Running tests..."
+    status.setContent "  #{text} | #{percent}% complete | " +
+      "✔ #{passed} | ✘ #{failed} | - #{skipped} | ? #{pending} | total: #{total}"
 
-  expandedTest = null
-  updatingList = false
-  testsArray = []
+  expanded = null
+  updating = false
+  tests = []
 
   renderTreeView = ->
-    updatingList = true
-    renderedItems = []
-    testsArray = []
+    updating = true
+    items = []
+    tests = []
     
     walk = ( test, indent = "" ) ->
       if test.description?
-        test.lineIndex = renderedItems.length
-        testsArray.push test
+        test.lineIndex = items.length
+        tests.push test
         
-        statusStr = gray("•") + " #{test.description}"
+        label = ( gray "•" ) + " #{test.description}"
         if test.status == "passed"
-          statusStr = green("✔") + " #{test.description}"
+          label = ( green "✔" ) + " #{test.description}"
         else if test.status == "failed"
           msg = if test.error?.message? then " (#{test.error.message})" else ""
-          statusStr = red("✘") + " #{test.description}" + red(msg)
+          label = ( red "✘" ) + " #{test.description}" + ( red msg )
         else if test.status == "skipped"
-          statusStr = yellow("-") + " #{test.description}"
+          label = ( yellow "-" ) + " #{test.description}"
         else if test.status == "pending"
-          statusStr = yellow("?") + " #{test.description}"
+          label = ( yellow "?" ) + " #{test.description}"
         else if test.status == "running"
-          statusStr = yellow("*") + " #{test.description} (running...)"
+          label = ( yellow "*" ) + " #{test.description} (running...)"
         
         if test.children?
-          renderedItems.push indent + cyan("+ " + test.description)
+          items.push indent + ( cyan "+ " + test.description )
           for child in test.children
             walk child, ( indent + "  " )
         else
-          renderedItems.push indent + statusStr
-          if test == expandedTest
-            stackLines = ( test.error?.stack ? test.error?.message ? "Unknown error" ).split "\n"
+          items.push indent + label
+          if test == expanded
+            error = test.error?.stack ? test.error?.message ? "Unknown error"
+            stackLines = error.split "\n"
             for line in stackLines
-              renderedItems.push indent + "  " + red(line)
-              testsArray.push null
+              items.push indent + "  " + ( red line )
+              tests.push null
       else
         if test.children?
           for child in test.children
@@ -174,25 +190,25 @@ renderBlessedTUI = ( iterator, target ) ->
 
     walk target
     
-    selectedIndex = treeView.selected
-    treeView.setItems renderedItems
-    treeView.select selectedIndex
-    screen.render()
-    updatingList = false
+    selected = tree.selected
+    tree.setItems items
+    tree.select selected
+    do screen.render
+    updating = false
 
-  renderTreeView()
-  treeView.focus()
+  do renderTreeView
+  do tree.focus
 
-  treeView.on "action", ( item, index ) ->
-    selectedTest = testsArray[ index ]
-    if selectedTest?
-      if selectedTest.status == "failed"
-        if expandedTest == selectedTest
-          expandedTest = null
+  tree.on "action", ( item, index ) ->
+    test = tests[ index ]
+    if test?
+      if test.status == "failed"
+        if expanded == test
+          expanded = null
         else
-          expandedTest = selectedTest
-        renderTreeView()
-        treeView.select selectedTest.lineIndex
+          expanded = test
+        do renderTreeView
+        tree.select test.lineIndex
 
   try
     for await event from iterator
@@ -200,33 +216,33 @@ renderBlessedTUI = ( iterator, target ) ->
       
       switch event.type
         when "test:start"
-          stats.total++
+          statistics.total++
           test.status = "running"
         when "test:success"
-          stats.passed++
+          statistics.passed++
           test.status = "passed"
         when "test:failure"
-          stats.failed++
+          statistics.failed++
           test.status = "failed"
           test.error = event.error
         when "test:skipped"
-          stats.skipped++
+          statistics.skipped++
           test.status = "skipped"
         when "test:pending"
-          stats.pending++
+          statistics.pending++
           test.status = "pending"
       
-      renderTreeView()
-      updateStatus()
-      screen.render()
+      do renderTreeView
+      do updateStatus
+      do screen.render
     
     updateStatus true
-    screen.render()
+    do screen.render
 
-    await exitPromise
+    await promise
   catch error
-    screen.destroy()
-    process.stdin.pause()
+    do screen.destroy
+    do process.stdin.pause
     throw error
 
 printLegacyTree = ( [ description, result ], indent = "" ) ->
