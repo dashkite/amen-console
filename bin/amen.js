@@ -22,30 +22,8 @@ if (!existsSync(testFile)) {
 }
 
 // Queue system for feeding events into renderBlessedTUI
-const eventQueue = [];
-let resolveNextEvent = null;
-
-function pushEvent(event) {
-  eventQueue.push(event);
-  if (resolveNextEvent) {
-    resolveNextEvent();
-    resolveNextEvent = null;
-  }
-}
-
-const iterator = {
-  [Symbol.asyncIterator]() {
-    return {
-      async next() {
-        while (eventQueue.length === 0) {
-          await new Promise(r => resolveNextEvent = r);
-        }
-        const value = eventQueue.shift();
-        return { value, done: false };
-      }
-    };
-  }
-};
+const { ReactorQueue } = require("@dashkite/river");
+const eventQueue = ReactorQueue.make();
 
 let child = null;
 let currentTree = null;
@@ -112,9 +90,9 @@ function runTests() {
       `type: ${message.type}, path: ${JSON.stringify(message.testPath)}, resolved: ${node ? node.description : "NULL"}\n`
     );
     if (message.type === "suite:start") {
-      pushEvent({ type: "suite:start", tree: currentTree });
+      eventQueue.enqueue({ type: "suite:start", tree: currentTree });
     } else {
-      pushEvent({
+      eventQueue.enqueue({
         type: message.type,
         test: node,
         error: message.error
@@ -123,11 +101,11 @@ function runTests() {
   });
 
   child.on("exit", (code) => {
-    pushEvent({ type: "suite:end", code });
+    eventQueue.enqueue({ type: "suite:end", code });
   });
 
   child.on("error", (err) => {
-    pushEvent({
+    eventQueue.enqueue({
       type: "suite:end",
       error: { message: err.message, stack: err.stack }
     });
@@ -162,7 +140,7 @@ function stopWatching() {
 }
 
 // Start Blessed TUI in parent process
-renderBlessedTUI(iterator, null, {
+renderBlessedTUI(eventQueue, null, {
   onRerun: () => {
     runTests();
   },
