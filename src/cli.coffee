@@ -59,10 +59,20 @@ findNode = ( node, path ) ->
       current = findChild current, step
   current
 
+reset = ( node ) ->
+  if node?
+    node.status = "waiting"
+    if node.children?
+      ( reset childNode for childNode in node.children )
+
 run = ->
   if child?
     do child.removeAllListeners
     child.kill "SIGKILL"
+
+  if tree?
+    ( reset tree )
+  ( queue.enqueue type: "suite:start", tree: tree )
 
   child = fork file, [],
     stdio: [ "ignore", "inherit", "inherit", "ipc" ]
