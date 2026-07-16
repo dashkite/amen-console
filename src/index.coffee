@@ -83,7 +83,6 @@ renderBlessedTUI = ( iterator, target ) ->
     width: "100%"
     bottom: 2
     keys: true
-    vi: true
     mouse: true
     parseAnsi: true
     scrollbar: ch: " "
@@ -108,7 +107,7 @@ renderBlessedTUI = ( iterator, target ) ->
       bg: "cyan"
       fg: "black"
     content:
-      "  UP/DOWN/j/k: Navigate | ENTER: Toggle stack trace | ESC/q: Exit"
+      "  UP/DOWN: Scroll | LEFT/RIGHT: Top/Bottom | ENTER: Toggle | ESC/q: Exit"
   
   statistics =
     passed: 0
@@ -198,6 +197,14 @@ renderBlessedTUI = ( iterator, target ) ->
 
   do renderTreeView
   do tree.focus
+
+  tree.key "left", ->
+    tree.select 0
+    do screen.render
+
+  tree.key "right", ->
+    tree.select ( tree.items.length - 1 )
+    do screen.render
 
   tree.on "action", ( item, index ) ->
     test = tests[ index ]
