@@ -73,7 +73,7 @@ streamEvents = ( iterator, target ) ->
   printTree target, statistics
   printSummary statistics
 
-renderBlessedTUI = ( iterator, target ) ->
+renderBlessedTUI = ( iterator, target, options = {} ) ->
   screen = blessed.screen autoPadding: true
   
   tree = blessed.list
@@ -125,9 +125,15 @@ renderBlessedTUI = ( iterator, target ) ->
     do screen.destroy
     do process.stdin.pause
     printSummary statistics
+    if options.onExit?
+      do options.onExit
     do resolver
 
   screen.key [ "escape", "q", "C-c" ], exit
+
+  screen.key [ "r" ], ->
+    if options.onRerun?
+      do options.onRerun
 
   updateStatus = ( finished = false ) ->
     passed = statistics.passed
@@ -154,39 +160,40 @@ renderBlessedTUI = ( iterator, target ) ->
     tests = []
     
     walk = ( test, indent = "" ) ->
-      if test.description?
-        test.lineIndex = items.length
-        tests.push test
-        
-        label = ( gray "•" ) + " #{test.description}"
-        if test.status == "passed"
-          label = ( green "✔" ) + " #{test.description}"
-        else if test.status == "failed"
-          msg = if test.error?.message? then " (#{test.error.message})" else ""
-          label = ( red "✘" ) + " #{test.description}" + ( red msg )
-        else if test.status == "skipped"
-          label = ( yellow "-" ) + " #{test.description}"
-        else if test.status == "pending"
-          label = ( yellow "?" ) + " #{test.description}"
-        else if test.status == "running"
-          label = ( yellow "*" ) + " #{test.description} (running...)"
-        
-        if test.children?
-          items.push indent + ( cyan "+ " + test.description )
-          for child in test.children
-            walk child, ( indent + "  " )
+      if test?
+        if test.description?
+          test.lineIndex = items.length
+          tests.push test
+          
+          label = ( gray "•" ) + " #{test.description}"
+          if test.status == "passed"
+            label = ( green "✔" ) + " #{test.description}"
+          else if test.status == "failed"
+            msg = if test.error?.message? then " (#{test.error.message})" else ""
+            label = ( red "✘" ) + " #{test.description}" + ( red msg )
+          else if test.status == "skipped"
+            label = ( yellow "-" ) + " #{test.description}"
+          else if test.status == "pending"
+            label = ( yellow "?" ) + " #{test.description}"
+          else if test.status == "running"
+            label = ( yellow "*" ) + " #{test.description} (running...)"
+          
+          if test.children?
+            items.push indent + ( cyan "+ " + test.description )
+            for child in test.children
+              walk child, ( indent + "  " )
+          else
+            items.push indent + label
+            if test == expanded
+              error = test.error?.stack ? test.error?.message ? "Unknown error"
+              stackLines = error.split "\n"
+              for line in stackLines
+                items.push indent + "  " + ( red line )
+                tests.push null
         else
-          items.push indent + label
-          if test == expanded
-            error = test.error?.stack ? test.error?.message ? "Unknown error"
-            stackLines = error.split "\n"
-            for line in stackLines
-              items.push indent + "  " + ( red line )
-              tests.push null
-      else
-        if test.children?
-          for child in test.children
-            walk child, indent
+          if test.children?
+            for child in test.children
+              walk child, indent
 
     walk target
     
@@ -237,6 +244,20 @@ renderBlessedTUI = ( iterator, target ) ->
       test = event.test
       
       switch event.type
+        when "suite:start"
+          statistics.passed = 0
+          statistics.failed = 0
+          statistics.skipped = 0
+          statistics.pending = 0
+          statistics.total = 0
+          statistics.startTime = Date.now()
+          target = event.tree
+          expanded = null
+          tests = []
+        when "suite:end"
+          updateStatus true
+          do screen.render
+          continue
         when "test:start"
           statistics.total++
           test.status = "running"
@@ -290,7 +311,42 @@ printLegacyTree = ( [ description, result ], indent = "" ) ->
       else
         yellow "➖ #{description}"
 
+serializeTree = ( test ) ->
+  description: test.description
+  children:
+    if test.children?
+      ( serializeTree child for child in test.children )
+    else
+      null
+
+getTestPath = ( test, target ) ->
+  path = []
+  current = test
+  while current? && current != target
+    if current.description?
+      path.unshift current.description
+    current = current.parent
+  path
+
+streamIPCEvents = ( iterator, target ) ->
+  process.send type: "suite:start", tree: serializeTree target
+  for await event from iterator
+    process.send
+      type: event.type
+      testPath: getTestPath event.test, target
+      error:
+        if event.error?
+          message: event.error.message
+          stack: event.error.stack
+        else
+          null
+
 print = ( target, options = {} ) ->
+  if process.send? && process.env.AMEN_IPC == "true"
+    if target?[ Symbol.asyncIterator ]?
+      return streamIPCEvents target, target
+    return
+
   mode = options.mode
   if ! mode?
     isCI = ( process.env.CI? ) || ( ! process.stdout.isTTY )
@@ -304,4 +360,4 @@ print = ( target, options = {} ) ->
   else
     printLegacyTree target, ""
 
-export default print
+export { print as default, renderBlessedTUI }
