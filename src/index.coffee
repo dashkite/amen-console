@@ -111,9 +111,9 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
   updateShortcuts = ->
     if options.onRerun?
       state = if options.isWatchActive? && do options.isWatchActive then "{bold}w: Watch{/bold}" else "w: Watch"
-      shortcuts.setContent "  ↑/↓: Scroll | ←/→: Top/Bottom | ENT: Toggle | r: Run | #{state} | q: Quit"
+      shortcuts.setContent "  ↑/↓: Nav | ←/→: Jump | ↵: Toggle | r: Run | #{state} | q: Quit"
     else
-      shortcuts.setContent "  ↑/↓: Scroll | ←/→: Top/Bottom | ENT: Toggle | q: Quit"
+      shortcuts.setContent "  ↑/↓: Nav | ←/→: Jump | ↵: Toggle | q: Quit"
 
   do updateShortcuts
   
