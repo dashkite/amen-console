@@ -6,25 +6,26 @@ import { ReactorQueue } from "@dashkite/river"
 import { renderBlessedTUI } from "./index"
 
 # CLI Arguments
-args = ( process.argv.slice 2 )
-watchMode = ( args.includes "--watch" ) || ( args.includes "-w" )
-testFileIndex = ( args.findIndex ( arg ) -> ! ( arg.startsWith "-" ) )
-if testFileIndex == -1
-  ( console.error "Error: Please specify a test file." )
-  ( process.exit 1 )
+args = process.argv.slice 2
+watch = ( args.includes "--watch" ) || ( args.includes "-w" )
+index = ( args.findIndex ( arg ) -> ! ( arg.startsWith "-" ) )
 
-testFile = ( resolve args[ testFileIndex ] )
+if index == -1
+  console.error "Error: Please specify a test file."
+  process.exit 1
 
-if ! ( existsSync testFile )
-  ( console.error "Error: Test file not found: #{testFile}" )
-  ( process.exit 1 )
+file = resolve args[ index ]
 
-eventQueue = do ReactorQueue.make
+if ! ( existsSync file )
+  console.error "Error: Test file not found: #{file}"
+  process.exit 1
+
+queue = do ReactorQueue.make
 
 child = null
-currentTree = null
+tree = null
 
-reconstructTree = ( serialized, parent = null ) ->
+reconstruct = ( serialized, parent = null ) ->
   node =
     description: serialized.description
     parent: parent
@@ -32,35 +33,37 @@ reconstructTree = ( serialized, parent = null ) ->
     children: null
   if serialized.children
     node.children =
-      ( reconstructTree childNode, node for childNode in serialized.children )
+      ( reconstruct childNode, node for childNode in serialized.children )
   node
 
-findChildWithDescription = ( node, description ) ->
-  if ! node? || ! node.children?
-    return null
-  direct = ( node.children.find ( childNode ) -> childNode.description == description )
-  if direct?
-    return direct
-  for childNode in node.children
-    if ! childNode.description?
-      match = ( findChildWithDescription childNode, description )
-      if match?
-        return match
-  null
+findChild = ( node, description ) ->
+  if node? && node.children?
+    direct = ( node.children.find ( childNode ) -> childNode.description == description )
+    if direct?
+      direct
+    else
+      found = null
+      for childNode in node.children
+        if ( ! childNode.description? ) && ( ! found? )
+          match = findChild childNode, description
+          if match?
+            found = match
+      found
+  else
+    null
 
-findNodeByPath = ( node, path ) ->
+findNode = ( node, path ) ->
   current = node
   for step in path
-    current = ( findChildWithDescription current, step )
-    if ! current?
-      return null
+    if current?
+      current = findChild current, step
   current
 
-runTests = ->
+run = ->
   if child?
-    ( child.kill "SIGKILL" )
+    child.kill "SIGKILL"
 
-  child = ( fork testFile, [],
+  child = fork file, [],
     stdio: [ "ignore", "inherit", "inherit", "ipc" ]
     env:
       {
@@ -68,82 +71,75 @@ runTests = ->
         AMEN_IPC: "true"
       }
     execArgv: [ "--enable-source-maps" ]
-  )
 
-  ( child.on "message", ( message ) ->
+  child.on "message", ( message ) ->
     node = null
     if message.type == "suite:start"
-      currentTree = ( reconstructTree message.tree )
+      tree = reconstruct message.tree
     else
-      node = ( findNodeByPath currentTree, message.testPath )
+      node = findNode tree, message.testPath
 
     if message.type == "suite:start"
-      ( eventQueue.enqueue type: "suite:start", tree: currentTree )
+      queue.enqueue type: "suite:start", tree: tree
     else
-      ( eventQueue.enqueue
+      queue.enqueue
         type: message.type
         test: node
         error: message.error
-      )
-  )
 
-  ( child.on "exit", ( code ) ->
-    ( eventQueue.enqueue type: "suite:end", code: code )
-  )
+  child.on "exit", ( code ) ->
+    queue.enqueue type: "suite:end", code: code
 
-  ( child.on "error", ( error ) ->
-    ( eventQueue.enqueue
+  child.on "error", ( error ) ->
+    queue.enqueue
       type: "suite:end"
       error:
         message: error.message
         stack: error.stack
-    )
-  )
 
 watcher = null
-watchActive = watchMode
+active = watch
 
-startWatching = ->
+observe = ->
   if watcher?
     return
-  dirsToWatch = []
+  dirs = []
   if ( existsSync "src" )
-    ( dirsToWatch.push "src" )
+    dirs.push "src"
   if ( existsSync "test" )
-    ( dirsToWatch.push "test" )
+    dirs.push "test"
 
-  testFileDir = ( dirname testFile )
-  if ( ! ( dirsToWatch.includes testFileDir ) ) && ( existsSync testFileDir )
-    ( dirsToWatch.push testFileDir )
+  dir = dirname file
+  if ( ! ( dirs.includes dir ) ) && ( existsSync dir )
+    dirs.push dir
 
-  watcher = ( chokidar.watch dirsToWatch, ignoreInitial: true )
-  ( watcher.on "all", -> do runTests )
+  watcher = chokidar.watch dirs, ignoreInitial: true
+  watcher.on "all", -> do run
 
-stopWatching = ->
+stop = ->
   if watcher?
     do watcher.close
     watcher = null
 
 # Start Blessed TUI in parent process
-( renderBlessedTUI eventQueue, null,
+renderBlessedTUI queue, null,
   onRerun: ->
-    do runTests
+    do run
   onToggleWatch: ->
-    watchActive = ! watchActive
-    if watchActive
-      do startWatching
+    active = ! active
+    if active
+      do observe
     else
-      do stopWatching
+      do stop
   isWatchActive: ->
-    watchActive
+    active
   onExit: ->
     if child?
-      ( child.kill "SIGKILL" )
-    do stopWatching
-    ( process.exit 0 )
-)
+      child.kill "SIGKILL"
+    do stop
+    process.exit 0
 
-if watchActive
-  do startWatching
+if active
+  do observe
 
-do runTests
+do run
