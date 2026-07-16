@@ -29,30 +29,30 @@ printSummary = ( statistics ) ->
   console.error "  Tests:    #{passed}, #{failed}, #{skipped}, " +
     "#{pending} (#{statistics.total} total)"
   console.error "  Duration: #{duration}s"
-  if statistics.failed > 0 && process?
+  if ( statistics.failed > 0 ) && process?
     process.exitCode = 1
 
 printTree = ( test, statistics, indent = "" ) ->
   if test.description?
     if test.children?
-      console.error indent + cyan( test.description )
+      console.error indent + ( cyan test.description )
       for child in test.children
         printTree child, statistics, ( indent + "  " )
     else
       status = test.status
       if status == "passed"
         statistics.passed++
-        console.error indent + green( "✔ " + test.description )
+        console.error indent + ( green "✔ #{test.description}" )
       else if status == "failed"
         statistics.failed++
-        console.error indent + red( "✘ " + test.description )
-        console.error indent + "  " + gray( test.error?.stack ? test.error?.message ? "Unknown error" )
+        console.error indent + ( red "✘ #{test.description}" )
+        console.error indent + "  " + ( gray test.error?.stack ? test.error?.message ? "Unknown error" )
       else if status == "skipped"
         statistics.skipped++
-        console.error indent + yellow( "- " + test.description )
+        console.error indent + ( yellow "- #{test.description}" )
       else if status == "pending"
         statistics.pending++
-        console.error indent + yellow( "? " + test.description )
+        console.error indent + ( yellow "? #{test.description}" )
   else
     if test.children?
       for child in test.children
@@ -230,16 +230,16 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
   tree.key "o", ->
     tree.emit "action", tree.items[ tree.selected ], tree.selected
 
-  zPressed = false
+  prefix = false
 
   tree.on "keypress", ( ch, key ) ->
-    if zPressed
-      zPressed = false
+    if prefix
+      prefix = false
       if key?.name == "a"
         tree.emit "action", tree.items[ tree.selected ], tree.selected
     else
       if key?.name == "z"
-        zPressed = true
+        prefix = true
 
   tree.on "action", ( item, index ) ->
     test = tests[ index ]
