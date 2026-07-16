@@ -97,7 +97,7 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     bottom: 1
     height: 1
     tags: true
-    content: "  Running tests..."
+    content: "  Running..."
 
   shortcuts = blessed.box
     parent: screen
@@ -111,9 +111,9 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
   updateShortcuts = ->
     if options.onRerun?
       state = if options.isWatchActive? && do options.isWatchActive then "{bold}w: Watch{/bold}" else "w: Watch"
-      shortcuts.setContent "  ↑/↓: Scroll | ←/→: Top/Bottom | ENT: Toggle | r: Run | #{state} | ESC/q: Exit"
+      shortcuts.setContent "  ↑/↓: Scroll | ←/→: Top/Bottom | ENT: Toggle | r: Run | #{state} | q: Quit"
     else
-      shortcuts.setContent "  ↑/↓: Scroll | ←/→: Top/Bottom | ENT: Toggle | ESC/q: Exit"
+      shortcuts.setContent "  ↑/↓: Scroll | ←/→: Top/Bottom | ENT: Toggle | q: Quit"
 
   do updateShortcuts
   
@@ -159,7 +159,7 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     if total > 0
       percent = Math.round( ( passed + failed + skipped + pending ) / total ) * 100
 
-    text = if finished then "Finished" else "Running tests..."
+    text = if finished then "Finished" else "Running..."
     status.setContent "  #{text} | #{percent}% complete | " +
       "✔ #{passed} | ✘ #{failed} | - #{skipped} | ? #{pending} | total: #{total}"
 
