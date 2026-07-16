@@ -25,83 +25,209 @@ printSummary = ( stats ) ->
   console.error bold "Test Summary:"
   console.error "  Tests:    " + green( "#{stats.passed} passed" ) + ", " +
                 ( if stats.failed > 0 then red( "#{stats.failed} failed" ) else "0 failed" ) + ", " +
-                yellow( "#{stats.skipped} pending/skipped" ) + " (#{stats.total} total)"
+                yellow( "#{stats.skipped} skipped" ) + ", " +
+                yellow( "#{stats.pending} pending" ) + " (#{stats.total} total)"
   console.error "  Duration: #{duration}s"
   if stats.failed > 0 && process?
     process.exitCode = 1
 
-streamEvents = ( iterator ) ->
-  stats = { passed: 0, failed: 0, skipped: 0, total: 0, startTime: Date.now() }
-  for await event from iterator
-    indent = getIndent event.test
-    switch event.type
-      when "test:start"
-        stats.total++
-      when "test:success"
+printTree = ( test, stats, indent = "" ) ->
+  if test.description?
+    if test.children?
+      console.error indent + cyan( test.description )
+      for child in test.children
+        printTree child, stats, ( indent + "  " )
+    else
+      status = test.status
+      if status == "passed"
         stats.passed++
-        console.error indent + green( "✔ " + event.test.description )
-      when "test:failure"
+        console.error indent + green( "✔ " + test.description )
+      else if status == "failed"
         stats.failed++
-        console.error indent + red( "✘ " + event.test.description )
-        console.error indent + "  " + gray( event.error.stack ? event.error.message )
-      when "test:skipped"
+        console.error indent + red( "✘ " + test.description )
+        console.error indent + "  " + gray( test.error?.stack ? test.error?.message ? "Unknown error" )
+      else if status == "skipped"
         stats.skipped++
-        console.error indent + yellow( "➖ " + event.test.description + " (skipped)" )
-      when "test:pending"
-        stats.skipped++
-        console.error indent + yellow( "➖ " + event.test.description + " (pending)" )
-      when "group:start"
-        if event.test.description?
-          console.error indent + cyan( event.test.description )
+        console.error indent + yellow( "- " + test.description )
+      else if status == "pending"
+        stats.pending++
+        console.error indent + yellow( "? " + test.description )
+  else
+    if test.children?
+      for child in test.children
+        printTree child, stats, indent
 
+streamEvents = ( iterator, target ) ->
+  stats = { passed: 0, failed: 0, skipped: 0, pending: 0, total: 0, startTime: Date.now() }
+  for await event from iterator
+    if event.type == "test:start"
+      stats.total++
+
+  printTree target, stats
   printSummary stats
 
-renderBlessedTUI = ( iterator ) ->
+renderBlessedTUI = ( iterator, target ) ->
   screen = blessed.screen autoPadding: true
-  treeView = blessed.log parent: screen, bottom: 2, tags: true, scrollable: true
-  progressBar = blessed.progressbar
+  
+  treeView = blessed.list
+    parent: screen
+    top: 0
+    left: 0
+    width: "100%"
+    bottom: 2
+    keys: true
+    vi: true
+    mouse: true
+    parseAnsi: true
+    scrollbar: ch: " "
+    style:
+      selected:
+        bg: "cyan"
+        fg: "black"
+
+  statusBar = blessed.box
+    parent: screen
+    bottom: 1
+    height: 1
+    tags: true
+    content: "  Running tests..."
+
+  shortcutBar = blessed.box
     parent: screen
     bottom: 0
     height: 1
+    tags: true
     style:
-      bar: bg: "green"
-      bg: bg: "gray"
+      bg: "cyan"
+      fg: "black"
+    content: "  UP/DOWN/j/k: Navigate | ENTER: Toggle stack trace | ESC/q: Exit"
   
-  stats = { passed: 0, failed: 0, skipped: 0, total: 0, startTime: Date.now() }
+  stats = { passed: 0, failed: 0, skipped: 0, pending: 0, total: 0, startTime: Date.now() }
+
+  exitResolver = null
+  exitPromise = new Promise ( resolve ) -> exitResolver = resolve
+
+  exit = ->
+    screen.destroy()
+    process.stdin.pause()
+    printSummary stats
+    exitResolver()
+
+  screen.key [ "escape", "q", "C-c" ], exit
+
+  updateStatus = ( finished = false ) ->
+    passed = stats.passed
+    failed = stats.failed
+    skipped = stats.skipped
+    pending = stats.pending
+    total = stats.total
+    
+    percent = 0
+    if total > 0
+      percent = Math.round ( ( passed + failed + skipped + pending ) / total ) * 100
+
+    statusText = if finished then "Execution Finished" else "Running tests..."
+    statusBar.setContent "  #{statusText} | #{percent}% complete | ✔ #{passed} | ✘ #{failed} | - #{skipped} | ? #{pending} | total: #{total}"
+
+  expandedTest = null
+  updatingList = false
+  testsArray = []
+
+  renderTreeView = ->
+    updatingList = true
+    renderedItems = []
+    testsArray = []
+    
+    walk = ( test, indent = "" ) ->
+      if test.description?
+        test.lineIndex = renderedItems.length
+        testsArray.push test
+        
+        statusStr = gray("•") + " #{test.description}"
+        if test.status == "passed"
+          statusStr = green("✔") + " #{test.description}"
+        else if test.status == "failed"
+          msg = if test.error?.message? then " (#{test.error.message})" else ""
+          statusStr = red("✘") + " #{test.description}" + red(msg)
+        else if test.status == "skipped"
+          statusStr = yellow("-") + " #{test.description}"
+        else if test.status == "pending"
+          statusStr = yellow("?") + " #{test.description}"
+        else if test.status == "running"
+          statusStr = yellow("*") + " #{test.description} (running...)"
+        
+        if test.children?
+          renderedItems.push indent + cyan("+ " + test.description)
+          for child in test.children
+            walk child, ( indent + "  " )
+        else
+          renderedItems.push indent + statusStr
+          if test == expandedTest
+            stackLines = ( test.error?.stack ? test.error?.message ? "Unknown error" ).split "\n"
+            for line in stackLines
+              renderedItems.push indent + "  " + red(line)
+              testsArray.push null
+      else
+        if test.children?
+          for child in test.children
+            walk child, indent
+
+    walk target
+    
+    selectedIndex = treeView.selected
+    treeView.setItems renderedItems
+    treeView.select selectedIndex
+    screen.render()
+    updatingList = false
+
+  renderTreeView()
+  treeView.focus()
+
+  treeView.on "action", ( item, index ) ->
+    selectedTest = testsArray[ index ]
+    if selectedTest?
+      if selectedTest.status == "failed"
+        if expandedTest == selectedTest
+          expandedTest = null
+        else
+          expandedTest = selectedTest
+        renderTreeView()
+        treeView.select selectedTest.lineIndex
 
   try
     for await event from iterator
-      indent = getIndent event.test
+      test = event.test
+      
       switch event.type
         when "test:start"
           stats.total++
+          test.status = "running"
         when "test:success"
           stats.passed++
-          treeView.log indent + "{green-fg}✔{/green-fg} " + event.test.description
+          test.status = "passed"
         when "test:failure"
           stats.failed++
-          treeView.log indent + "{red-fg}✘{/red-fg} " + event.test.description
-          stackLines = ( event.error?.stack ? "" ).split "\n"
-          for line in stackLines
-            treeView.log indent + "  {red-fg}#{line}{/red-fg}"
+          test.status = "failed"
+          test.error = event.error
         when "test:skipped"
           stats.skipped++
-          treeView.log indent + "{yellow-fg}➖ " + event.test.description + " (skipped){/yellow-fg}"
+          test.status = "skipped"
         when "test:pending"
-          stats.skipped++
-          treeView.log indent + "{yellow-fg}➖ " + event.test.description + " (pending){/yellow-fg}"
-        when "group:start"
-          if event.test.description?
-            treeView.log indent + "{cyan-fg}📂 " + event.test.description + "{/cyan-fg}"
+          stats.pending++
+          test.status = "pending"
       
-      if stats.total > 0
-        progressBar.setProgress ( ( stats.passed + stats.skipped ) / stats.total ) * 100
+      renderTreeView()
+      updateStatus()
       screen.render()
-  finally
+    
+    updateStatus true
+    screen.render()
+
+    await exitPromise
+  catch error
     screen.destroy()
     process.stdin.pause()
-
-  printSummary stats
+    throw error
 
 printLegacyTree = ( [ description, result ], indent = "" ) ->
   if Array.isArray result
@@ -134,9 +260,9 @@ print = ( target, options = {} ) ->
 
   if target?[ Symbol.asyncIterator ]?
     if mode == "tui"
-      renderBlessedTUI target
+      renderBlessedTUI target, target
     else
-      streamEvents target
+      streamEvents target, target
   else
     printLegacyTree target, ""
 
