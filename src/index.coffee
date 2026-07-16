@@ -107,8 +107,15 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     style:
       bg: "cyan"
       fg: "black"
-    content:
-      "  UP/DOWN: Scroll | LEFT/RIGHT: Top/Bottom | ENTER: Toggle | ESC/q: Exit"
+  
+  updateShortcuts = ->
+    if options.onRerun?
+      state = if options.isWatchActive? && do options.isWatchActive then "{bold}w: Watch{/bold}" else "w: Watch"
+      shortcuts.setContent "  ↑/↓: Scroll | ←/→: Top/Bottom | ENT: Toggle | r: Run | #{state} | ESC/q: Exit"
+    else
+      shortcuts.setContent "  ↑/↓: Scroll | ←/→: Top/Bottom | ENT: Toggle | ESC/q: Exit"
+
+  do updateShortcuts
   
   statistics =
     passed: 0
@@ -135,6 +142,12 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     if options.onRerun?
       do options.onRerun
 
+  screen.key [ "w" ], ->
+    if options.onToggleWatch?
+      do options.onToggleWatch
+      do updateShortcuts
+      do screen.render
+
   updateStatus = ( finished = false ) ->
     passed = statistics.passed
     failed = statistics.failed
@@ -146,7 +159,7 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     if total > 0
       percent = Math.round( ( passed + failed + skipped + pending ) / total ) * 100
 
-    text = if finished then "Execution Finished" else "Running tests..."
+    text = if finished then "Finished" else "Running tests..."
     status.setContent "  #{text} | #{percent}% complete | " +
       "✔ #{passed} | ✘ #{failed} | - #{skipped} | ? #{pending} | total: #{total}"
 
@@ -349,7 +362,8 @@ print = ( target, options = {} ) ->
 
   mode = options.mode
   if ! mode?
-    isCI = ( process.env.CI? ) || ( ! process.stdout.isTTY )
+    isTest = process.env.npm_lifecycle_event == "test"
+    isCI = ( process.env.CI? ) || ( ! process.stdout.isTTY ) || isTest
     mode = if isCI then "stream" else "tui"
 
   if target?[ Symbol.asyncIterator ]?

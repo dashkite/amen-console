@@ -91,6 +91,7 @@ function runTests() {
   }
 
   child = fork(testFile, [], {
+    stdio: ["ignore", "inherit", "inherit", "ipc"],
     env: {
       ...process.env,
       AMEN_IPC: "true"
@@ -133,8 +134,11 @@ function runTests() {
   });
 }
 
-// Start watching if watchMode is active
-if (watchMode) {
+let watcher = null;
+let watchActive = watchMode;
+
+function startWatching() {
+  if (watcher) return;
   const dirsToWatch = [];
   if (existsSync("src")) dirsToWatch.push("src");
   if (existsSync("test")) dirsToWatch.push("test");
@@ -144,23 +148,47 @@ if (watchMode) {
     dirsToWatch.push(testFileDir);
   }
 
-  chokidar.watch(dirsToWatch, { ignoreInitial: true }).on("all", () => {
+  watcher = chokidar.watch(dirsToWatch, { ignoreInitial: true });
+  watcher.on("all", () => {
     runTests();
   });
 }
 
-// Kickoff first run
-runTests();
+function stopWatching() {
+  if (watcher) {
+    watcher.close();
+    watcher = null;
+  }
+}
 
 // Start Blessed TUI in parent process
 renderBlessedTUI(iterator, null, {
   onRerun: () => {
     runTests();
   },
+  onToggleWatch: () => {
+    watchActive = !watchActive;
+    if (watchActive) {
+      startWatching();
+    } else {
+      stopWatching();
+    }
+  },
+  isWatchActive: () => {
+    return watchActive;
+  },
   onExit: () => {
     if (child) {
       child.kill("SIGKILL");
     }
+    stopWatching();
     process.exit(0);
   }
 });
+
+if (watchActive) {
+  startWatching();
+}
+
+// Kickoff first run
+runTests();
