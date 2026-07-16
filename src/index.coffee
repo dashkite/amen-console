@@ -189,7 +189,7 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
           else if test.status == "pending"
             label = ( yellow "?" ) + " #{test.description}"
           else if test.status == "running"
-            label = ( yellow "*" ) + " #{test.description} (running...)"
+            label = ( yellow "*" ) + " #{test.description}"
           
           if test.children?
             items.push indent + ( cyan "+ " + test.description )
