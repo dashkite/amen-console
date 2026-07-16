@@ -61,6 +61,7 @@ findNode = ( node, path ) ->
 
 run = ->
   if child?
+    do child.removeAllListeners
     child.kill "SIGKILL"
 
   child = fork file, [],
