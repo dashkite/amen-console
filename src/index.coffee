@@ -164,9 +164,11 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     filled = Math.round( percent / 10 )
     bar = "█".repeat( filled ) + "░".repeat( 10 - filled )
 
-    text = if finished then "Finished" else "Running..."
+    pad = ( n ) -> String( n ).padStart 3
+
+    text = if finished then "Finished" else " Running"
     status.setContent "  #{text} | #{bar} | " +
-      "✔ #{passed} | ✘ #{failed} | - #{skipped} | ? #{pending} | total: #{total}"
+      "✔ #{pad passed} | ✘ #{pad failed} | - #{pad skipped} | ? #{pad pending} | total: #{pad total}"
 
   expanded = null
   updating = false
