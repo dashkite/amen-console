@@ -161,8 +161,11 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     if total > 0
       percent = Math.round( ( passed + failed + skipped + pending ) / total * 100 )
 
+    filled = Math.round( percent / 10 )
+    bar = "█".repeat( filled ) + "░".repeat( 10 - filled )
+
     text = if finished then "Finished" else "Running..."
-    status.setContent "  #{text} | #{percent}% | " +
+    status.setContent "  #{text} | #{bar} | " +
       "✔ #{passed} | ✘ #{failed} | - #{skipped} | ? #{pending} | total: #{total}"
 
   expanded = null
