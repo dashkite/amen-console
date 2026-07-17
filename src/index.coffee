@@ -67,7 +67,7 @@ streamEvents = ( iterator, target ) ->
     failed: 0
     skipped: 0
     pending: 0
-    total: if target?.count? then do target.count else 0
+    total: target?.count?() ? 0
     startTime: Date.now()
   for await event from iterator
     undefined
@@ -124,7 +124,7 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     failed: 0
     skipped: 0
     pending: 0
-    total: if target?.count? then do target.count else 0
+    total: target?.count?() ? 0
     startTime: Date.now()
 
   resolver = null
@@ -268,7 +268,7 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
           statistics.failed = 0
           statistics.skipped = 0
           statistics.pending = 0
-          statistics.total = event.total ? ( if target?.count? then do target.count else 0 )
+          statistics.total = event.total
           statistics.startTime = Date.now()
           target = event.tree
           expanded = null
