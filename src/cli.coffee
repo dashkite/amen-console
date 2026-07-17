@@ -91,7 +91,7 @@ run = ->
       node = findNode tree, message.testPath
 
     if message.type == "suite:start"
-      queue.enqueue type: "suite:start", tree: tree
+      queue.enqueue type: "suite:start", tree: tree, total: message.total
     else
       queue.enqueue
         type: message.type

@@ -1,5 +1,8 @@
 import blessed from "neo-blessed"
-import { red, green, yellow, blue, cyan, gray, bold } from "colorette"
+import { createColors } from "colorette"
+
+{ red, green, yellow, blue, cyan, gray, bold } = createColors
+  useColor: process?.stdout?.isTTY
 
 debug = ( process.env.debug? ) || ( process.env.DEBUG? )
 
@@ -64,11 +67,10 @@ streamEvents = ( iterator, target ) ->
     failed: 0
     skipped: 0
     pending: 0
-    total: 0
+    total: if target?.count? then do target.count else 0
     startTime: Date.now()
   for await event from iterator
-    if event.type == "test:start"
-      statistics.total++
+    undefined
 
   printTree target, statistics
   printSummary statistics
@@ -122,7 +124,7 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     failed: 0
     skipped: 0
     pending: 0
-    total: 0
+    total: if target?.count? then do target.count else 0
     startTime: Date.now()
 
   resolver = null
@@ -157,7 +159,7 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
     
     percent = 0
     if total > 0
-      percent = Math.round( ( passed + failed + skipped + pending ) / total ) * 100
+      percent = Math.round( ( passed + failed + skipped + pending ) / total * 100 )
 
     text = if finished then "Finished" else "Running..."
     status.setContent "  #{text} | #{percent}% complete | " +
@@ -262,7 +264,7 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
           statistics.failed = 0
           statistics.skipped = 0
           statistics.pending = 0
-          statistics.total = 0
+          statistics.total = event.total ? ( if target?.count? then do target.count else 0 )
           statistics.startTime = Date.now()
           target = event.tree
           expanded = null
@@ -272,7 +274,6 @@ renderBlessedTUI = ( iterator, target, options = {} ) ->
           do screen.render
           continue
         when "test:start"
-          statistics.total++
           test.status = "running"
         when "test:success"
           statistics.passed++
@@ -342,7 +343,10 @@ getTestPath = ( test, target ) ->
   path
 
 streamIPCEvents = ( iterator, target ) ->
-  process.send type: "suite:start", tree: serializeTree target
+  process.send
+    type: "suite:start"
+    tree: serializeTree target
+    total: if target?.count? then do target.count else 0
   for await event from iterator
     process.send
       type: event.type
