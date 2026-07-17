@@ -363,23 +363,24 @@ streamIPCEvents = ( iterator, target ) ->
           null
 
 print = ( target, options = {} ) ->
-  if process.send? && process.env.AMEN_IPC == "true"
+  if ( process.send? ) && ( process.env.AMEN_IPC == "true" )
     if target?[ Symbol.asyncIterator ]?
-      return streamIPCEvents target, target
-    return
-
-  mode = options.mode
-  if ! mode?
-    isTest = process.env.npm_lifecycle_event == "test"
-    isCI = ( process.env.CI? ) || ( ! process.stdout.isTTY ) || isTest
-    mode = if isCI then "stream" else "tui"
-
-  if target?[ Symbol.asyncIterator ]?
-    if mode == "tui"
-      renderBlessedTUI target, target
+      streamIPCEvents target, target
     else
-      streamEvents target, target
+      undefined
   else
-    printLegacyTree target, ""
+    mode = options.mode
+    if ! mode?
+      isTest = process.env.npm_lifecycle_event == "test"
+      isCI = ( process.env.CI? ) || ( ! process.stdout.isTTY ) || isTest
+      mode = if isCI then "stream" else "tui"
+
+    if target?[ Symbol.asyncIterator ]?
+      if mode == "tui"
+        renderBlessedTUI target, target
+      else
+        streamEvents target, target
+    else
+      printLegacyTree target, ""
 
 export { print as default, renderBlessedTUI }

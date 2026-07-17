@@ -112,20 +112,19 @@ watcher = null
 active = watch
 
 observe = ->
-  if watcher?
-    return
-  dirs = []
-  if ( existsSync "src" )
-    dirs.push "src"
-  if ( existsSync "test" )
-    dirs.push "test"
+  unless watcher?
+    dirs = []
+    if ( existsSync "src" )
+      dirs.push "src"
+    if ( existsSync "test" )
+      dirs.push "test"
 
-  dir = dirname file
-  if ( ! ( dirs.includes dir ) ) && ( existsSync dir )
-    dirs.push dir
+    dir = dirname file
+    if ( ! ( dirs.includes dir ) ) && ( existsSync dir )
+      dirs.push dir
 
-  watcher = chokidar.watch dirs, ignoreInitial: true
-  watcher.on "all", -> do run
+    watcher = chokidar.watch dirs, ignoreInitial: true
+    watcher.on "all", -> do run
 
 stop = ->
   if watcher?
